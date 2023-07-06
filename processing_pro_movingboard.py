@@ -111,8 +111,11 @@ class hamster_control:
         prev_time = 0
         total_frames = 0
         start_time = time.time()
+
         initial_count = 0     # Variables to distinguish between scan stages
         dice_markerid = 7
+        board_update = 0
+
         hamster = HamsterS()  # Connecting hamsterS
 
         # loop over the frames from the video stream
@@ -219,6 +222,11 @@ class hamster_control:
                             print("Error 200: Hamster aruco marker not recognized")
                             continue
 
+                        if (abs(self.board_position[markerID][0] - cX) >= 10 or abs(self.board_position[markerID][1] - cY) >= 10) and diagonal >= 90:  # When the position of the board aruco marker is changed during the play
+                            self.board_position.update({markerID: (cX, cY, diagonal)})
+                            board_update = 1
+                            #print('바뀐 위치: ', self.board_position[markerID])
+
                         if dice_markerid == 7:
                             if abs(self.board_position[markerID][0] - cX) >= 10 or abs(self.board_position[markerID][1] - cY) >= 10 or abs(self.board_position[markerID][2] - diagonal) >= 10:
                                 if dice_markerid not in self.dice_position:
@@ -292,12 +300,12 @@ class hamster_control:
                             self.marker_positions[j].clear()
                         self.board_position.clear()
                         break
-                    else:
+                    elif board_update == 0:
                         self.board_position[i] = self.marker_positions[i][0]
 
             # Print the result
             # print("marker_positions:", self.marker_positions)
-            # print("board_positions:", self.board_position)
+            print("board_positions:", self.board_position)
 
             # if the `q` key was pressed, break from the loop
             if key == ord("q"):
