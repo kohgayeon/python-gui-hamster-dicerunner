@@ -49,7 +49,7 @@ class hamster_control:
         vector_2 = np.array([heading[0] - hpos[0], heading[1] - hpos[1]])
 
         # Calculating the angle between the hamster and the destination
-        innerAB = np.dot(vector_1, vector_2)
+        innerAB = np.dot(vector_1, vector_2)                      
         AB = np.linalg.norm(vector_1) * np.linalg.norm(vector_2)
         angle = np.arccos(innerAB / AB)
         self.degree = angle / np.pi * 180
@@ -206,11 +206,11 @@ class hamster_control:
                     # Compute the center (x, y)-coordinates of the ArUco marker
                     cX = int((topLeft[0] + bottomRight[0]) / 2.0)
                     cY = int((topLeft[1] + bottomRight[1]) / 2.0)
-                    cv2.circle(frame, (cX, cY), 4, (0, 0, 255), -1)
+                    cv2.circle(frame, (cX, cY), 4, (0, 0, 0), -1)  # Black location coordinate point
 
                     # Draw the ArUco marker ID on the frame
-                    cv2.putText(frame, str(markerID), (topLeft[0], topLeft[1] - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
-                                (0, 0, 255), 2)
+                    cv2.putText(frame, str(markerID), (topLeft[0], topLeft[1] - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.8,
+                                (255, 255, 255), 2)                # White markerID
 
                     if markerID == 2:
                         w = Ham.cal_heading(topRight, topLeft)  # Calculating the heading value of a hamster
@@ -221,13 +221,12 @@ class hamster_control:
                         if not any(self.hamster_position):           # Exception handling if hamster robot may not be on board
                             print("Error 200: Hamster aruco marker not recognized")
                             continue
+                        if markerID in self.board_position:
+                            if (abs(self.board_position[markerID][0] - cX) >= 10 or abs(self.board_position[markerID][1] - cY) >= 10) and diagonal >= 90:  # When the position of the board aruco marker is changed during the play
+                                self.board_position.update({markerID: (cX, cY, diagonal)})
+                                board_update = 1
 
-                        if (abs(self.board_position[markerID][0] - cX) >= 10 or abs(self.board_position[markerID][1] - cY) >= 10) and diagonal >= 90:  # When the position of the board aruco marker is changed during the play
-                            self.board_position.update({markerID: (cX, cY, diagonal)})
-                            board_update = 1
-                            #print('바뀐 위치: ', self.board_position[markerID])
-
-                        if dice_markerid == 7:
+                        if dice_markerid == 7 and markerID in self.board_position:
                             if abs(self.board_position[markerID][0] - cX) >= 10 or abs(self.board_position[markerID][1] - cY) >= 10 or abs(self.board_position[markerID][2] - diagonal) >= 10:
                                 if dice_markerid not in self.dice_position:
                                     self.dice_position[markerID] = (cX, cY, diagonal)  # Dice is thrown -> update the dice position
@@ -240,7 +239,7 @@ class hamster_control:
                         # 1) Calculating the destination coordinate, hamster current position coordinate, distance value
                         if dice_markerid in self.dice_position:
                             Ham.cal_distance()
-                            cv2.circle(frame, self.dest, 4, (255, 0, 0), -1)  # Mark the coordinates of the destination with a white dot
+                            cv2.circle(frame, self.dest, 4, (255, 255, 255), -1)       # Mark the coordinates of the destination with a white dot
 
                             # 2) Finding Hamster Orientation: Calculating the Angle
                             Ham.cal_angle()
@@ -292,20 +291,14 @@ class hamster_control:
                             self.marker_positions[j].clear()
                         self.board_position.clear()
                         break
-                    if self.marker_positions[i][0][2] < 90:                    # Distinguished by the height of the aruco marker on board
-                        print("Error 300: Take out the dice and put it back")  # Error caused by dice
-                        # Initialization operation
-                        initial_count = 0
-                        for j in range(7):
-                            self.marker_positions[j].clear()
-                        self.board_position.clear()
-                        break
-                    elif board_update == 0:
-                        self.board_position[i] = self.marker_positions[i][0]
+                    for j in range(len(self.marker_positions[i])):
+                        if self.marker_positions[i][j][2] >= 90 and board_update == 0:
+                            self.board_position[i] = self.marker_positions[i][0]
 
             # Print the result
-            # print("marker_positions:", self.marker_positions)
+            print("marker_positions:", self.marker_positions)
             print("board_positions:", self.board_position)
+            print("dice_positions:", self.dice_position)
 
             # if the `q` key was pressed, break from the loop
             if key == ord("q"):
