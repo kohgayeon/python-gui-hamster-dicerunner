@@ -49,7 +49,7 @@ class hamster_control:
         vector_2 = np.array([heading[0] - hpos[0], heading[1] - hpos[1]])
 
         # Calculating the angle between the hamster and the destination
-        innerAB = np.dot(vector_1, vector_2)                      
+        innerAB = np.dot(vector_1, vector_2)
         AB = np.linalg.norm(vector_1) * np.linalg.norm(vector_2)
         angle = np.arccos(innerAB / AB)
         self.degree = angle / np.pi * 180
@@ -228,12 +228,10 @@ class hamster_control:
 
                         if dice_markerid == 7 and markerID in self.board_position:
                             if abs(self.board_position[markerID][0] - cX) >= 10 or abs(self.board_position[markerID][1] - cY) >= 10 or abs(self.board_position[markerID][2] - diagonal) >= 10:
-                                if dice_markerid not in self.dice_position:
-                                    self.dice_position[markerID] = (cX, cY, diagonal)  # Dice is thrown -> update the dice position
+                                if dice_markerid not in self.dice_position or board_update == 1:
+                                    self.dice_position[markerID] = (cX, cY, diagonal)                                   # Dice is thrown -> update the dice position
+                                    self.dest = [self.board_position[markerID][0], self.board_position[markerID][1]]    # Get the destination coordinate value for the hamster to arrive at
 
-                                    for key, value in self.board_position.items():
-                                        if markerID == key:
-                                            self.dest = [value[0], value[1]]           # Get the destination coordinate value for the hamster to arrive at
                                     dice_markerid = markerID
 
                         # 1) Calculating the destination coordinate, hamster current position coordinate, distance value
@@ -294,6 +292,15 @@ class hamster_control:
                     for j in range(len(self.marker_positions[i])):
                         if self.marker_positions[i][j][2] >= 90 and board_update == 0:
                             self.board_position[i] = self.marker_positions[i][0]
+
+                    if i not in self.board_position:  # 5번 board를 햄스터가 완전히 가리고, 주사위가 5번일 때 board에는 아무것도 저장되지 않음..
+                        print("Error 100: Six board aruco markers are not recognized")
+                        # Initialization operation
+                        initial_count = 0
+                        for j in range(7):
+                            self.marker_positions[j].clear()
+                        self.board_position.clear()
+                        break
 
             # Print the result
             print("marker_positions:", self.marker_positions)
