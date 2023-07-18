@@ -9,50 +9,108 @@ import math
 class hamster_control:
     def __init__(self):
         self.marker_positions = [[] * 7 for i in range(7)]  # 2D List to store location information for all markers
-        self.board_position = {}                            # Dictionary to store the 6 marker positions on the board (fixed)
-        self.hamster_position = {}                          # Dictionary to store hamster location (continued update)
-        self.dice_position = {}                             # Dictionary to store dice location (continued update)
+        self.board_position = {}  # Dictionary to store the 6 marker positions on the board (fixed)
+        self.hamster_position = {}  # Dictionary to store hamster location (continued update)
+        self.dice_position = {}  # Dictionary to store dice location (continued update)
 
-        self.dest = []     # Destination coordinate value for the hamster to arrive at
+        self.dest = []  # Destination coordinate value for the hamster to arrive at
         self.distance = 0  # Distance between the hamster's current location and destination(dest)
-        self.degree = 0    # for heading
+        self.degree = 0  # for heading
 
-    def cal_distance(self):
+        self.inter_stop = []  # 중간 정거장 (경로 중간에 주사위가 있는 경우)
+
+    def cal_distance(self, route_mov):
         hpos = [self.hamster_position[2][0], self.hamster_position[2][1]]  # hamster's current location(hpos)
-        self.distance = math.dist(self.dest, hpos)                         # To calculate the distance
+        if route_mov == 0:
+            self.distance = math.dist(self.dest, hpos)  # To calculate the distance
+        elif route_mov == 1:
+            self.distance = math.dist(self.inter_stop, hpos)  # To calculate the distance
 
     def cal_heading(self, p1, p2):
         v1 = int((p1[0] + p2[0]) / 2.0)
         v2 = int((p1[1] + p2[1]) / 2.0)
-        w = [v1, v2]     # heading_point: to find the direction of the hamster
+        w = [v1, v2]  # heading_point: to find the direction of the hamster
         return w
 
-    def rotation(self):  # Function to find the direction the hamster will move
-        # If the hamster needs to rotate to the right, calculate the distance1
-        head1 = Ham.cal_heading(self.hamster_position[2][5], self.hamster_position[2][7])
-        distance1 = math.dist(self.dest, head1)
+    def rotation(self, route_mov):  # Function to find the direction the hamster will move
+        distance1 = 0
+        distance2 = 0
+        if route_mov == 0:
+            # If the hamster needs to rotate to the right, calculate the distance1
+            head1 = Ham.cal_heading(self.hamster_position[2][5], self.hamster_position[2][7])
+            distance1 = math.dist(self.dest, head1)
 
-        # If the hamster needs to rotate to the left, calculate the distance2
-        head2 = Ham.cal_heading(self.hamster_position[2][4], self.hamster_position[2][6])
-        distance2 = math.dist(self.dest, head2)
+            # If the hamster needs to rotate to the left, calculate the distance2
+            head2 = Ham.cal_heading(self.hamster_position[2][4], self.hamster_position[2][6])
+            distance2 = math.dist(self.dest, head2)
+
+        elif route_mov == 1:
+            # If the hamster needs to rotate to the right, calculate the distance1
+            head1 = Ham.cal_heading(self.hamster_position[2][5], self.hamster_position[2][7])
+            distance1 = math.dist(self.inter_stop, head1)
+
+            # If the hamster needs to rotate to the left, calculate the distance2
+            head2 = Ham.cal_heading(self.hamster_position[2][4], self.hamster_position[2][6])
+            distance2 = math.dist(self.inter_stop, head2)
 
         if distance1 < distance2:
-            return 1                 # Turn the hamster to the right
+            return 1  # Turn the hamster to the right
         elif distance2 < distance1:
-            return 0                 # Turn the hamster to the left
+            return 0  # Turn the hamster to the left
 
-    def cal_angle(self):  # Function to calculate the angle to find the right direction
+    def cal_angle(self, route_mov):  # Function to calculate the angle to find the right direction
         hpos = [self.hamster_position[2][0], self.hamster_position[2][1]]
         heading = self.hamster_position[2][3]
 
-        vector_1 = np.array([self.dest[0] - hpos[0], self.dest[1] - hpos[1]])
-        vector_2 = np.array([heading[0] - hpos[0], heading[1] - hpos[1]])
+        if route_mov == 0:
+            vector_1 = np.array([self.dest[0] - hpos[0], self.dest[1] - hpos[1]])
+            vector_2 = np.array([heading[0] - hpos[0], heading[1] - hpos[1]])
 
-        # Calculating the angle between the hamster and the destination
-        innerAB = np.dot(vector_1, vector_2)
-        AB = np.linalg.norm(vector_1) * np.linalg.norm(vector_2)
-        angle = np.arccos(innerAB / AB)
-        self.degree = angle / np.pi * 180
+            # Calculating the angle between the hamster and the destination
+            innerAB = np.dot(vector_1, vector_2)
+            AB = np.linalg.norm(vector_1) * np.linalg.norm(vector_2)
+
+            angle = np.arccos(innerAB / AB)
+            self.degree = angle / np.pi * 180
+        elif route_mov == 1:
+            vector_1 = np.array([self.inter_stop[0] - hpos[0], self.inter_stop[1] - hpos[1]])
+            vector_2 = np.array([heading[0] - hpos[0], heading[1] - hpos[1]])
+
+            # Calculating the angle between the hamster and the destination
+            innerAB = np.dot(vector_1, vector_2)
+            AB = np.linalg.norm(vector_1) * np.linalg.norm(vector_2)
+
+            angle = np.arccos(innerAB / AB)
+            self.degree = angle / np.pi * 180
+
+    def cal_ab(self):   # 햄스터가 이동할 경로 (직선의 방정식) 계산하기
+        x1, y1 = self.hamster_position[2][0], self.hamster_position[2][1]  # 햄스터 현재 좌표
+        x2, y2 = self.dest[0], self.dest[1]                                # 목적지 좌표
+
+        # y = ax + b
+        if (x2 - x1) != 0:
+            a = (y2 - y1)/(x2 - x1)
+            b = (x2*y1 - x1*y2)/(x2 - x1)
+            return a, b
+        else:
+            return x1, 0        # 햄스터와 목적지 x좌표가 동일함. (같은 x축 선상에 위치함.) x=x1
+
+    def cal_inter(self, x, y):  # 중간 경로, (x, y): dice 좌표
+        x1, y1 = self.hamster_position[2][0], self.hamster_position[2][1]  # 햄스터 현재 좌표
+        x2, y2 = self.dest[0], self.dest[1]  # 목적지 좌표
+
+        if abs(x1 - x) <= 40:               # 햄스터와 주사위가 x축선에 나란히 위치한 경우
+            if x+150 < 800:                 # 전체 frame = [1000, 600]
+                self.inter_stop = [x+150, y2]
+            else:
+                self.inter_stop = [x-150, y2]
+        elif abs(y1 - y) <= 40:            # 햄스터와 주사위가 x축선에 나란히 위치한 경우
+            if y+150 < 400:
+                self.inter_stop = [x2, y+150]
+            else:
+                self.inter_stop = [x2, y-150]
+        else:
+            self.inter_stop = [x1, y2]     # 햄스터와 주사위가 x축과 y축에서 모두 나란히 있지 X
 
     def run(self):
         # construct the argument parser and parse the arguments
@@ -115,6 +173,7 @@ class hamster_control:
         initial_count = 0     # Variables to distinguish between scan stages
         dice_markerid = 7
         board_update = 0
+        route_mov = 0         # 경로를 변경하기 위한 변수
 
         hamster = HamsterS()  # Connecting hamsterS
 
@@ -231,42 +290,79 @@ class hamster_control:
                                 if dice_markerid not in self.dice_position or board_update == 1:
                                     self.dice_position[markerID] = (cX, cY, diagonal)                                   # Dice is thrown -> update the dice position
                                     self.dest = [self.board_position[markerID][0], self.board_position[markerID][1]]    # Get the destination coordinate value for the hamster to arrive at
-
                                     dice_markerid = markerID
+
+                                    # 햄스터가 장애물을 피해서 돌아가는 알고리즘 추가
+                                    # 1) y=ax+b, 경로(직선 거리) 계산하기
+                                    a, b = Ham.cal_ab()
+                                    if b != 0:
+                                        y = a * cX + b                # (cX, cY) = 주사위 위치 좌표
+
+                                        if abs(y - cY) <= 52:         # 햄스터가 지나가야 할 경로에 주사위가 있음, 오차는 40(너비를 고려해서)
+                                            route_mov = 1             # 경로를 수정함. (햄스터가 피해가야 함.)
+                                            Ham.cal_inter(cX, cY)     # 지나가야 할 중간 정거장 계산하기
+                                        else:
+                                            if a != 0:
+                                                x = (cY - b) / a
+                                                if abs(x - cX) <= 52:  # 원래 45
+                                                    route_mov = 1
+                                                    Ham.cal_inter(cX, cY)  # 지나가야 할 중간 정거장 저장하기
+                                                else:
+                                                    route_mov = 0
+                                            else:   # 기울기 a==0, y=b
+                                                if abs(cY - b) <= 40:
+                                                    route_mov = 1
+                                                    Ham.cal_inter(cX, cY)  # 지나가야 할 중간 정거장 저장하기
+                                                else:
+                                                    route_mov = 0
+                                    else:  # 햄스터와 목적지가 동일한 x축 선상에 위치함. (거의 희박한 경우) x=a
+                                        if abs(cX - a) <= 40:
+                                            route_mov = 1
+                                            Ham.cal_inter(cX, cY)  # 지나가야 할 중간 정거장 저장하기
+                                        else:
+                                            route_mov = 0
 
                         # 1) Calculating the destination coordinate, hamster current position coordinate, distance value
                         if dice_markerid in self.dice_position:
-                            Ham.cal_distance()
+                            Ham.cal_distance(route_mov)
                             cv2.circle(frame, self.dest, 4, (255, 255, 255), -1)       # Mark the coordinates of the destination with a white dot
+                            if any(self.inter_stop):
+                                cv2.circle(frame, self.inter_stop, 4, (255, 255, 255), -1)
 
                             # 2) Finding Hamster Orientation: Calculating the Angle
-                            Ham.cal_angle()
+                            Ham.cal_angle(route_mov)
                             if self.distance < 20:   # Stop the hamster when it reaches its destination
                                 hamster.stop()
                                 dice_markerid = 7    # Initializing to roll the next dice
+                                route_mov = 0
+                                self.inter_stop.clear()
                                 continue
 
                             if self.degree >= 15:
-                                if Ham.rotation() == 1:      # Turn right
+                                if Ham.rotation(route_mov) == 1:      # Turn right
                                     hamster.wheels(15, -15)
-                                elif Ham.rotation() == 0:    # Turn left
+                                elif Ham.rotation(route_mov) == 0:    # Turn left
                                     hamster.wheels(-15, 15)
 
-                                Ham.cal_angle()
+                                Ham.cal_angle(route_mov)
                                 if self.degree < 15:
                                     hamster.wheels(30)     # Moving forward
-                                    Ham.cal_distance()
+                                    Ham.cal_distance(route_mov)
                                     if self.distance < 20:
                                         hamster.stop()
                                         dice_markerid = 7  # Initializing to roll the next dice
+                                        route_mov = 0
+                                        self.inter_stop.clear()
                             else:
                                 # 3) Hamster Straight:
                                 # Repeat until the distance to the destination approaches zero, continuing to detect the hamster's current position
                                 hamster.wheels(30)         # Moving forward
-                                Ham.cal_distance()
+                                Ham.cal_distance(route_mov)
                                 if self.distance < 20:
                                     hamster.stop()
                                     dice_markerid = 7      # Initializing to roll the next dice
+                                    route_mov = 0
+                                    self.inter_stop.clear()
                     self.marker_positions[markerID].append((cX, cY, diagonal))  # Save location information for all recognized aruco markers
 
             initial_count = initial_count + 1
@@ -302,10 +398,10 @@ class hamster_control:
                         self.board_position.clear()
                         break
 
-            # Print the result
-            print("marker_positions:", self.marker_positions)
-            print("board_positions:", self.board_position)
-            print("dice_positions:", self.dice_position)
+            # # Print the result
+            # print("marker_positions:", self.marker_positions)
+            # print("board_positions:", self.board_position)
+            # print("dice_positions:", self.dice_position)
 
             # if the `q` key was pressed, break from the loop
             if key == ord("q"):
