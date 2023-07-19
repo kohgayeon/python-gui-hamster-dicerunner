@@ -8,23 +8,23 @@ import math
 
 class hamster_control:
     def __init__(self):
-        self.marker_positions = [[] * 7 for i in range(7)]  # 2D List to store location information for all markers
-        self.board_position = {}  # Dictionary to store the 6 marker positions on the board (fixed)
-        self.hamster_position = {}  # Dictionary to store hamster location (continued update)
-        self.dice_position = {}  # Dictionary to store dice location (continued update)
+        self.marker_positions = [[] * 7 for i in range(7)]    # 2D List to store location information for all markers
+        self.board_position = {}                              # Dictionary to store the 6 marker positions on the board (fixed)
+        self.hamster_position = {}                            # Dictionary to store hamster location (continued update)
+        self.dice_position = {}                               # Dictionary to store dice location (continued update)
 
-        self.dest = []  # Destination coordinate value for the hamster to arrive at
-        self.distance = 0  # Distance between the hamster's current location and destination(dest)
-        self.degree = 0  # for heading
+        self.dest = []                                        # Destination coordinate value for the hamster to arrive at
+        self.distance = 0                                     # Distance between the hamster's current location and destination(dest)
+        self.degree = 0                                       # for heading
 
-        self.inter_stop = []  # 중간 정거장 (경로 중간에 주사위가 있는 경우)
+        self.inter_stop = []                                  # Intermediate station (if there is a dice in the middle of the route)
 
     def cal_distance(self, route_mov):
         hpos = [self.hamster_position[2][0], self.hamster_position[2][1]]  # hamster's current location(hpos)
         if route_mov == 0:
-            self.distance = math.dist(self.dest, hpos)  # To calculate the distance
+            self.distance = math.dist(self.dest, hpos)                     # To calculate the distance
         elif route_mov == 1:
-            self.distance = math.dist(self.inter_stop, hpos)  # To calculate the distance
+            self.distance = math.dist(self.inter_stop, hpos)               # To calculate the distance
 
     def cal_heading(self, p1, p2):
         v1 = int((p1[0] + p2[0]) / 2.0)
@@ -83,9 +83,9 @@ class hamster_control:
             angle = np.arccos(innerAB / AB)
             self.degree = angle / np.pi * 180
 
-    def cal_ab(self):   # 햄스터가 이동할 경로 (직선의 방정식) 계산하기
-        x1, y1 = self.hamster_position[2][0], self.hamster_position[2][1]  # 햄스터 현재 좌표
-        x2, y2 = self.dest[0], self.dest[1]                                # 목적지 좌표
+    def cal_ab(self):                                                      # Calculating the path (equation of straight lines) for the hamster to move
+        x1, y1 = self.hamster_position[2][0], self.hamster_position[2][1]  # Hamster current position coordinate
+        x2, y2 = self.dest[0], self.dest[1]                                # Destination location coordinate
 
         # y = ax + b
         if (x2 - x1) != 0:
@@ -93,24 +93,24 @@ class hamster_control:
             b = (x2*y1 - x1*y2)/(x2 - x1)
             return a, b
         else:
-            return x1, 0        # 햄스터와 목적지 x좌표가 동일함. (같은 x축 선상에 위치함.) x=x1
+            return x1, 0        # Hamster and destination have the same x-coordinate (located on the same x-axis.) x=x1
 
-    def cal_inter(self, x, y):  # 중간 경로, (x, y): dice 좌표
-        x1, y1 = self.hamster_position[2][0], self.hamster_position[2][1]  # 햄스터 현재 좌표
-        x2, y2 = self.dest[0], self.dest[1]  # 목적지 좌표
+    def cal_inter(self, x, y):                                              # Intermediate station, (x, y): dice current position coordinate
+        x1, y1 = self.hamster_position[2][0], self.hamster_position[2][1]   # Hamster current position coordinate
+        x2, y2 = self.dest[0], self.dest[1]                                 # Destination location coordinate
 
-        if abs(x1 - x) <= 40:               # 햄스터와 주사위가 x축선에 나란히 위치한 경우
-            if x+150 < 800:                 # 전체 frame = [1000, 600]
+        if abs(x1 - x) <= 40:               # Hamster and dice are placed side by side on the x-axis
+            if x+150 < 800:                 # Entire frame size = [1000, 600]
                 self.inter_stop = [x+150, y2]
             else:
                 self.inter_stop = [x-150, y2]
-        elif abs(y1 - y) <= 40:            # 햄스터와 주사위가 x축선에 나란히 위치한 경우
-            if y+150 < 400:
+        elif abs(y1 - y) <= 40:            # Hamster and dice are placed side by side on the y-axis
+            if y+150 < 400:                # Do not deviate from the entire image frame.
                 self.inter_stop = [x2, y+150]
             else:
                 self.inter_stop = [x2, y-150]
         else:
-            self.inter_stop = [x1, y2]     # 햄스터와 주사위가 x축과 y축에서 모두 나란히 있지 X
+            self.inter_stop = [x1, y2]     # Hamster and dice are not side by side on both x and y axes
 
     def run(self):
         # construct the argument parser and parse the arguments
@@ -173,7 +173,7 @@ class hamster_control:
         initial_count = 0     # Variables to distinguish between scan stages
         dice_markerid = 7
         board_update = 0
-        route_mov = 0         # 경로를 변경하기 위한 변수
+        route_mov = 0         # Variable to determine if the path has been changed
 
         hamster = HamsterS()  # Connecting hamsterS
 
@@ -292,33 +292,33 @@ class hamster_control:
                                     self.dest = [self.board_position[markerID][0], self.board_position[markerID][1]]    # Get the destination coordinate value for the hamster to arrive at
                                     dice_markerid = markerID
 
-                                    # 햄스터가 장애물을 피해서 돌아가는 알고리즘 추가
-                                    # 1) y=ax+b, 경로(직선 거리) 계산하기
+                                    # Added algorithm for hamsters to move away from obstacles (dice).
+                                    # 1) y=ax+b, To calculate the path (straight distance)
                                     a, b = Ham.cal_ab()
                                     if b != 0:
-                                        y = a * cX + b                # (cX, cY) = 주사위 위치 좌표
+                                        y = a * cX + b                 # (cX, cY) = Dice current location coordinate
 
-                                        if abs(y - cY) <= 52:         # 햄스터가 지나가야 할 경로에 주사위가 있음, 오차는 40(너비를 고려해서)
-                                            route_mov = 1             # 경로를 수정함. (햄스터가 피해가야 함.)
-                                            Ham.cal_inter(cX, cY)     # 지나가야 할 중간 정거장 계산하기
+                                        if abs(y - cY) <= 52:          # If there is a Dice in the path that the hamster should pass, the error is 52 (considering the width)
+                                            route_mov = 1              # There's a middle stop.
+                                            Ham.cal_inter(cX, cY)      # Calculating the intermediate station a Hamster should pass
                                         else:
                                             if a != 0:
                                                 x = (cY - b) / a
-                                                if abs(x - cX) <= 52:  # 원래 45
+                                                if abs(x - cX) <= 52:      # the error is 52 (considering the width)
                                                     route_mov = 1
-                                                    Ham.cal_inter(cX, cY)  # 지나가야 할 중간 정거장 저장하기
+                                                    Ham.cal_inter(cX, cY)  # Calculating the intermediate station a Hamster should pass
                                                 else:
                                                     route_mov = 0
                                             else:   # 기울기 a==0, y=b
                                                 if abs(cY - b) <= 40:
                                                     route_mov = 1
-                                                    Ham.cal_inter(cX, cY)  # 지나가야 할 중간 정거장 저장하기
+                                                    Ham.cal_inter(cX, cY)  # Calculating the intermediate station a Hamster should pass
                                                 else:
                                                     route_mov = 0
-                                    else:  # 햄스터와 목적지가 동일한 x축 선상에 위치함. (거의 희박한 경우) x=a
+                                    else:                                  # Hamster and destination are on the same x-axis (almost rare) x=a
                                         if abs(cX - a) <= 40:
                                             route_mov = 1
-                                            Ham.cal_inter(cX, cY)  # 지나가야 할 중간 정거장 저장하기
+                                            Ham.cal_inter(cX, cY)          # Calculating the intermediate station a Hamster should pass
                                         else:
                                             route_mov = 0
 
@@ -389,7 +389,8 @@ class hamster_control:
                         if self.marker_positions[i][j][2] >= 90 and board_update == 0:
                             self.board_position[i] = self.marker_positions[i][0]
 
-                    if i not in self.board_position:  # 5번 board를 햄스터가 완전히 가리고, 주사위가 5번일 때 board에는 아무것도 저장되지 않음..
+                    # Hamster completely covers the board maker, and there is a dice with the same makerid as the covered board markerid.
+                    if i not in self.board_position:
                         print("Error 100: Six board aruco markers are not recognized")
                         # Initialization operation
                         initial_count = 0
